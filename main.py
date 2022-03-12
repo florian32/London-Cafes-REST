@@ -98,5 +98,32 @@ def post_new_cafe():
     return jsonify(response={"success": "Successfully added the new cafe."})
 
 
+@app.route("/update-price/<int:cafe_id>", methods=["PATCH"])
+def patch_new_price(cafe_id):
+    new_price = request.args.get("new_price")
+    cafe = db.session.query(Cafe).get(cafe_id)
+    if cafe:
+        cafe.coffee_price = new_price
+        db.session.commit()
+        return jsonify(response={"success": "Successfully updated the price."}), 200
+    else:
+        return jsonify(error={"Not Found": "Sorry a cafe with that id was not found in the database."}), 404
+
+
+@app.route("/report-closed/<cafe_id>", methods=["DELETE", "GET"])
+def delete(cafe_id):
+    api_key = request.args.get("api-key")
+    if api_key == "TopSecret":
+        cafe = db.session.query(Cafe).get(cafe_id)
+        if cafe:
+            db.session.delete(cafe)
+            db.session.commit()
+            return jsonify(response={"success": "Successfully deleted the cafe."}), 200
+        else:
+            return jsonify(error={"Cafe not found."}), 404
+    else:
+        return jsonify(error={"Not authorized": "Sorry, wrong API Key."}), 404
+
+
 if __name__ == '__main__':
     app.run(debug=True)
