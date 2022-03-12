@@ -1,5 +1,6 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session
 from flask_sqlalchemy import SQLAlchemy
+import random
 
 app = Flask(__name__)
 
@@ -23,19 +24,59 @@ class Cafe(db.Model):
     can_take_calls = db.Column(db.Boolean, nullable=False)
     coffee_price = db.Column(db.String(250), nullable=True)
 
+    def to_dict(self):
+        # Method 1.
+        dictionary = {}
+        # Loop through each column in the data record
+        for column in self.__table__.columns:
+            # Create a new dictionary entry;
+            # where the key is the name of the column
+            # and the value is the value of the column
+            dictionary[column.name] = getattr(self, column.name)
+        return dictionary
+
+        # Method 2. Altenatively use Dictionary Comprehension to do the same thing.
+        # return {column.name: getattr(self, column.name) for column in self.__table__.columns}
+
+
+db.create_all()
+all_cafes = db.session.query(Cafe).all()
+
 
 @app.route("/")
 def home():
     return render_template("index.html")
-    
 
-## HTTP GET - Read Record
 
-## HTTP POST - Create Record
+@app.route("/random", methods=["GET", "POST"])
+def get_random():
+    choice = random.choice(all_cafes)
+    return jsonify(name=choice.name,
+                   map_url=choice.map_url,
+                   location=choice.location,
+                   has_sockets=choice.has_sockets,
+                   has_toilet=choice.has_toilet,
+                   has_wifi=choice.has_wifi,
+                   img_url=choice.img_url,
+                   id=choice.id)
 
-## HTTP PUT/PATCH - Update Record
 
-## HTTP DELETE - Delete Record
+# list of json
+@app.route("/all", methods=["GET", "POST"])
+def get_all_cafes():
+    # This uses a List Comprehension but you could also split it into 3 lines.
+    return jsonify(cafes=[cafe.to_dict() for cafe in all_cafes])
+
+
+# filtering by argument location
+@app.route("/search")
+def get_cafe_at_location():
+    query_location = request.args.get("loc")
+    cafe = db.session.query(Cafe).filter_by(location=query_location).first()
+    if cafe:
+        return jsonify(cafe=cafe.to_dict())
+    else:
+        return jsonify(error={"Not Found": "Sorry, we don't have a cafe at that location."})
 
 
 if __name__ == '__main__':
